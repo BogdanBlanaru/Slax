@@ -16,7 +16,7 @@ defmodule SlaxWeb.ChatRoomLive do
           
           <div
             class={["text-xs leading-none h-3.5", @hide_topic? && "text-slate-600"]}
-            pxh-click="toggle-topic"
+            phx-click="toggle-topic"
           >
             <%= if @hide_topic? do %>
               <span class="text-slate-600">[Hidden topic]</span>
