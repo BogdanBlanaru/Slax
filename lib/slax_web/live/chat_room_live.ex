@@ -89,7 +89,7 @@ defmodule SlaxWeb.ChatRoomLive do
     """
   end
 
-  def mount(params, _session, socket) do
+  def mount(_params, _session, socket) do
     # {:ok, socket}
 
     rooms = Repo.all(Room)
