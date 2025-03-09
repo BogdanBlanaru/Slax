@@ -79,7 +79,7 @@ defmodule SlaxWeb.ChatRoomLive do
         "flex items-center h-8 text-sm pl-8 pr-3",
         (@active && "bg-slate-300") || "hover:bg-slate-300"
       ]}
-      navigate={~p"/rooms/#{@room.id}"}
+      patch={~p"/rooms/#{@room.id}"}
     >
       <.icon name="hero-hashtag" class="h-4 w-4" />
       <span class={["ml-2 leading-none", @active && "font-bold"]}>
@@ -94,13 +94,7 @@ defmodule SlaxWeb.ChatRoomLive do
 
     rooms = Repo.all(Room)
 
-    room =
-      case Map.fetch(params, "id") do
-        {:ok, id} -> %Room{} = Enum.find(rooms, &(to_string(&1.id) == id))
-        :error -> List.first(rooms)
-      end
-
-    {:ok, assign(socket, hide_topic?: false, room: room, rooms: rooms)}
+    {:ok, assign(socket, rooms: rooms)}
 
     # socket =
     #   socket
@@ -110,6 +104,18 @@ defmodule SlaxWeb.ChatRoomLive do
     # {:ok, socket}
 
     # socket = assign(socket, room: room, director: "Tommy H.")
+  end
+
+  def handle_params(params, _uri, socket) do
+    rooms = socket.assigns.rooms
+
+    room =
+      case Map.fetch(params, "id") do
+        {:ok, id} -> %Room{} = Enum.find(rooms, &(to_string(&1.id) == id))
+        :error -> List.first(rooms)
+      end
+
+    {:noreply, assign(socket, hide_topic?: false, room: room)}
   end
 
   def handle_event("toggle-topic", _params, socket) do
