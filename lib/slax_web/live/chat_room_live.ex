@@ -1,8 +1,8 @@
 defmodule SlaxWeb.ChatRoomLive do
   use SlaxWeb, :live_view
 
+  alias Slax.Chat
   alias Slax.Chat.Room
-  alias Slax.Repo
 
   def render(assigns) do
     ~H"""
@@ -14,12 +14,12 @@ defmodule SlaxWeb.ChatRoomLive do
           </h1>
         </div>
       </div>
-      
+
       <div class="mt-4 overflow-auto">
         <div class="flex items-center h-8 px-3">
           <span class="ml-2 leading-none font-medium text-sm">Rooms</span>
         </div>
-        
+
         <div id="rooms-list">
           <.room_link :for={room <- @rooms} room={room} active={room.id == @room.id} />
         </div>
@@ -33,7 +33,7 @@ defmodule SlaxWeb.ChatRoomLive do
           <h1 class="text-sm font-bold leading-none">
             {@room.name}
           </h1>
-          
+
           <div
             class={["text-xs leading-none h-3.5", @hide_topic? && "text-slate-600"]}
             phx-click="toggle-topic"
@@ -92,7 +92,7 @@ defmodule SlaxWeb.ChatRoomLive do
   def mount(_params, _session, socket) do
     # {:ok, socket}
 
-    rooms = Repo.all(Room)
+    rooms = Chat.list_rooms()
 
     {:ok, assign(socket, rooms: rooms)}
 
