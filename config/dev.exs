@@ -3,7 +3,7 @@ import Config
 # Configure your database
 config :slax, Slax.Repo,
   username: "postgres",
-  password: "H0YoUM7Lc5r2DwV.",
+  password: "postgres",
   hostname: "localhost",
   database: "slax_dev",
   stacktrace: true,

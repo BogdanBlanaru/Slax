@@ -10,7 +10,7 @@ config :pbkdf2_elixir, :rounds, 1
 # Run `mix help test` for more information.
 config :slax, Slax.Repo,
   username: "postgres",
-  password: "H0YoUM7Lc5r2DwV.",
+  password: "postgres",
   hostname: "localhost",
   database: "slax_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
