@@ -177,14 +177,17 @@ defmodule SlaxWeb.ChatRoomLive do
 
     messages = Chat.list_messages_in_room(room)
 
-    socket
-    |> assign(
-      hide_topic?: false,
-      messages: messages,
-      page_title: "#" <> room.name,
-      room: room
-    )
-    |> assign_message_form(Chat.change_message(%Message{}))
+    socket =
+      socket
+      |> assign(
+        hide_topic?: false,
+        messages: messages,
+        page_title: "#" <> room.name,
+        room: room
+      )
+      |> assign_message_form(Chat.change_message(%Message{}))
+
+    {:noreply, socket}
   end
 
   def handle_event("toggle-topic", _params, socket) do
