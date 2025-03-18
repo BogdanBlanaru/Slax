@@ -1,4 +1,5 @@
 defmodule Slax.Chat do
+  alias Expo.Message
   alias Slax.Chat.Room
   alias Slax.Chat.{Message, Room}
   alias Slax.Repo
@@ -7,6 +8,16 @@ defmodule Slax.Chat do
 
   def change_room(room, attrs \\ %{}) do
     Room.changeset(room, attrs)
+  end
+
+  def change_message(message, attrs \\ %{}) do
+    Message.changeset(message, attrs)
+  end
+
+  def create_message(room, attrs, user) do
+    %Message{room: room, user: user}
+    |> Message.changeset(attrs)
+    |> Repo.insert()
   end
 
   def get_room!(id) do
