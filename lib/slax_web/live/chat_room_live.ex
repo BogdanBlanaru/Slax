@@ -33,6 +33,7 @@ defmodule SlaxWeb.ChatRoomLive do
               <.icon name="hero-plus" class="h-4 w-4 relative top-px" />
               <span class="ml-2 leading-none">Add rooms</span>
             </button>
+
             <div
               id="sidebar-rooms-menu"
               class="hidden cursor-default absolute top-8 right-2 bg-white border-slate-200 border py-3 rounded-lg"
@@ -49,12 +50,14 @@ defmodule SlaxWeb.ChatRoomLive do
             </div>
           </div>
         </div>
+
         <div class="mt-4">
           <div class="flex items-center h-8 px-3">
             <div class="flex items-center grow">
               <.toggler on_click={toggle_users()} dom_id="users-toggler" text="Users" />
             </div>
           </div>
+
           <div id="users-list">
             <.user
               :for={user <- @users}
@@ -72,7 +75,6 @@ defmodule SlaxWeb.ChatRoomLive do
         <div class="flex flex-col gap-1.5">
           <h1 class="text-sm font-bold leading-none">
             {@room.name}
-
             <.link
               :if={@joined?}
               class="font-normal text-xs text-blue-600 hover:text-blue-700"
@@ -93,10 +95,12 @@ defmodule SlaxWeb.ChatRoomLive do
             <% end %>
           </div>
         </div>
+
         <ul class="relative z-10 flex items-center gap-4 px-4 sm:px-6 lg:px-8 justify-end">
           <li class="text-[0.8125rem] leading-6 text-zinc-900">
             {username(@current_user)}
           </li>
+
           <li>
             <.link
               href={~p"/users/settings"}
@@ -105,6 +109,7 @@ defmodule SlaxWeb.ChatRoomLive do
               Settings
             </.link>
           </li>
+
           <li>
             <.link
               href={~p"/users/log_out"}
@@ -116,6 +121,7 @@ defmodule SlaxWeb.ChatRoomLive do
           </li>
         </ul>
       </div>
+
       <div
         id="room-messages"
         class="flex flex-col grow overflow-auto"
@@ -154,6 +160,7 @@ defmodule SlaxWeb.ChatRoomLive do
           </button>
         </.form>
       </div>
+
       <div
         :if={!@joined?}
         class="flex justify-around mx-5 mb-5 p-6 bg-slate-100 border-slate-300 border rounded-lg"
@@ -161,8 +168,10 @@ defmodule SlaxWeb.ChatRoomLive do
         <div class="max-w-3-xl text-center">
           <div class="mb-4">
             <h1 class="text-xl font-semibold">#{@room.name}</h1>
+
             <p :if={@room.topic} class="text-sm mt-1 textgray-600">{@room.topic}</p>
           </div>
+
           <div class="flex items-center justify-around">
             <button
               phx-click="join-room"
@@ -171,6 +180,7 @@ defmodule SlaxWeb.ChatRoomLive do
               Join Room
             </button>
           </div>
+
           <div class="mt-4">
             <.link
               navigate={~p"/rooms"}
@@ -262,15 +272,19 @@ defmodule SlaxWeb.ChatRoomLive do
       >
         <.icon name="hero-trash" class="h-4 w-4" />
       </button>
+
       <div class="h-10 w-10 rounded shrink-0 bg-slate-300"></div>
+
       <div class="ml-2">
         <div class="-mt-1">
           <.link class="text-sm font-semibold hover:underline">
             <span>{username(@message.user)}</span>\
           </.link>
+
           <span :if={@timezone} class="ml-1 text-xs text-gray-500">
             {message_timestamp(@message, @timezone)}
           </span>
+
           <p class="text-sm">{@message.body}</p>
         </div>
       </div>

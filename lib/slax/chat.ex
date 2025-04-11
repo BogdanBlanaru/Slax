@@ -5,6 +5,7 @@ defmodule Slax.Chat do
   alias Slax.Chat.Room
   alias Slax.Chat.{Message, Room, RoomMembership}
   alias Slax.Repo
+  alias Slax.Chat.RoomMembership
 
   import Ecto.Query
 
@@ -100,5 +101,20 @@ defmodule Slax.Chat do
     Repo.exists?(
       from rm in RoomMembership, where: rm.room_id == ^room.id and rm.user_id == ^user.id
     )
+  end
+
+  @doc """
+  Toggles the room membership for a user.
+  """
+  def toggle_room_membership(room, user) do
+    case Repo.get_by(RoomMembership, room_id: room.id, user_id: user.id) do
+      %RoomMembership{} = membership ->
+        Repo.delete(membership)
+        {room, false}
+
+      nil ->
+        join_room!(room, user)
+        {room, true}
+    end
   end
 end
