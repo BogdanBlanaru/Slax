@@ -2,15 +2,18 @@ defmodule Slax.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Slax.Chat.{Room, RoomMembership}
+  alias Slax.Chat.{Reaction, Room, RoomMembership}
 
   schema "users" do
     field :email, :string
+    field :username, :string
     field :password, :string, virtual: true, redact: true
     field :hashed_password, :string, redact: true
     field :current_password, :string, virtual: true, redact: true
     field :confirmed_at, :utc_datetime
+    field :avatar_path, :string
 
+    has_many :reactions, Reaction
     many_to_many :rooms, Room, join_through: RoomMembership
 
     timestamps(type: :utc_datetime)
@@ -41,9 +44,30 @@ defmodule Slax.Accounts.User do
   """
   def registration_changeset(user, attrs, opts \\ []) do
     user
-    |> cast(attrs, [:email, :password])
+    |> cast(attrs, [:email, :username, :password])
     |> validate_email(opts)
+    |> validate_username(opts)
     |> validate_password(opts)
+  end
+
+  defp validate_username(changeset, opts) do
+    changeset
+    |> validate_required([:username])
+    |> validate_format(:username, ~r/^[A-Za-z0-9-]+$/,
+      message: "can only contain letters, numbers and dashes"
+    )
+    |> validate_length(:username, max: 20)
+    |> maybe_validate_unique_username(opts)
+  end
+
+  defp maybe_validate_unique_username(changeset, opts) do
+    if Keyword.get(opts, :validate_username, true) do
+      changeset
+      |> unsafe_validate_unique(:username, Slax.Repo)
+      |> unique_constraint(:username)
+    else
+      changeset
+    end
   end
 
   defp validate_email(changeset, opts) do
@@ -71,9 +95,11 @@ defmodule Slax.Accounts.User do
 
     if hash_password? && password && changeset.valid? do
       changeset
+      # If using Bcrypt, then further validate it is at most 72 bytes long
+      |> validate_length(:password, max: 72, count: :bytes)
       # Hashing could be done with `Ecto.Changeset.prepare_changes/2`, but that
       # would keep the database transaction open longer and hurt performance.
-      |> put_change(:hashed_password, Pbkdf2.hash_pwd_salt(password))
+      |> put_change(:hashed_password, Bcrypt.hash_pwd_salt(password))
       |> delete_change(:password)
     else
       changeset
@@ -136,15 +162,15 @@ defmodule Slax.Accounts.User do
   Verifies the password.
 
   If there is no user or the user doesn't have a password, we call
-  `Pbkdf2.no_user_verify/0` to avoid timing attacks.
+  `Bcrypt.no_user_verify/0` to avoid timing attacks.
   """
   def valid_password?(%Slax.Accounts.User{hashed_password: hashed_password}, password)
       when is_binary(hashed_password) and byte_size(password) > 0 do
-    Pbkdf2.verify_pass(password, hashed_password)
+    Bcrypt.verify_pass(password, hashed_password)
   end
 
   def valid_password?(_, _) do
-    Pbkdf2.no_user_verify()
+    Bcrypt.no_user_verify()
     false
   end
 
@@ -159,5 +185,10 @@ defmodule Slax.Accounts.User do
     else
       add_error(changeset, :current_password, "is not valid")
     end
+  end
+
+  def avatar_changeset(user, attrs \\ %{}) do
+    user
+    |> cast(attrs, [:avatar_path])
   end
 end

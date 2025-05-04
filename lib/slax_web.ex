@@ -17,7 +17,7 @@ defmodule SlaxWeb do
   those modules here.
   """
 
-  def static_paths, do: ~w(assets fonts images favicon.ico robots.txt)
+  def static_paths, do: ~w(assets fonts images uploads favicon.ico robots.txt)
 
   def router do
     quote do
@@ -42,9 +42,8 @@ defmodule SlaxWeb do
         formats: [:html, :json],
         layouts: [html: SlaxWeb.Layouts]
 
-      use Gettext, backend: SlaxWeb.Gettext
-
       import Plug.Conn
+      import SlaxWeb.Gettext
 
       unquote(verified_routes())
     end
@@ -55,6 +54,8 @@ defmodule SlaxWeb do
       use Phoenix.LiveView,
         layout: {SlaxWeb.Layouts, :app}
 
+      import SlaxWeb.SocketHelpers
+
       unquote(html_helpers())
     end
   end
@@ -62,6 +63,8 @@ defmodule SlaxWeb do
   def live_component do
     quote do
       use Phoenix.LiveComponent
+
+      import SlaxWeb.SocketHelpers
 
       unquote(html_helpers())
     end
@@ -82,13 +85,11 @@ defmodule SlaxWeb do
 
   defp html_helpers do
     quote do
-      # Translation
-      use Gettext, backend: SlaxWeb.Gettext
-
       # HTML escaping functionality
       import Phoenix.HTML
-      # Core UI components
+      # Core UI components and translation
       import SlaxWeb.CoreComponents
+      import SlaxWeb.Gettext
 
       # Shortcut for generating JS commands
       alias Phoenix.LiveView.JS

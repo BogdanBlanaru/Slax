@@ -20,7 +20,7 @@ config :slax, SlaxWeb.Endpoint,
     layout: false
   ],
   pubsub_server: Slax.PubSub,
-  live_view: [signing_salt: "lh2TECLn"]
+  live_view: [signing_salt: "eVrK1EP/"]
 
 # Configures the mailer
 #

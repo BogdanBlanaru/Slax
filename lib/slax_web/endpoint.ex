@@ -7,7 +7,7 @@ defmodule SlaxWeb.Endpoint do
   @session_options [
     store: :cookie,
     key: "_slax_key",
-    signing_salt: "vVT5xvIs",
+    signing_salt: "h7Rg+y1b",
     same_site: "Lax"
   ]
 

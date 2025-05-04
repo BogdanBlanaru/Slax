@@ -32,8 +32,8 @@ defmodule Slax.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:pbkdf2_elixir, "~> 2.0"},
-      {:phoenix, "~> 1.7.20"},
+      {:bcrypt_elixir, "~> 3.0"},
+      {:phoenix, "~> 1.7.14"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.10"},
       {:postgrex, ">= 0.0.0"},
@@ -55,11 +55,13 @@ defmodule Slax.MixProject do
       {:finch, "~> 0.13"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
-      {:gettext, "~> 0.26"},
+      {:gettext, "~> 0.20"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.1.1"},
       {:bandit, "~> 1.5"},
-      {:timex, "~> 3.7"}
+      {:timex, "~> 3.7"},
+      {:faker, "~> 0.18", only: :dev},
+      {:paginator, "~> 1.2.0"}
     ]
   end
 

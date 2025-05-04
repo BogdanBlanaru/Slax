@@ -38,9 +38,13 @@ defmodule Slax.Accounts do
       nil
 
   """
-  def get_user_by_email_and_password(email, password)
-      when is_binary(email) and is_binary(password) do
-    user = Repo.get_by(User, email: email)
+  def get_authenticated_user(email_or_username, password)
+      when is_binary(email_or_username) and is_binary(password) do
+    user =
+      User
+      |> where([u], u.email == ^email_or_username or u.username == ^email_or_username)
+      |> Repo.one()
+
     if User.valid_password?(user, password), do: user
   end
 
@@ -90,7 +94,11 @@ defmodule Slax.Accounts do
 
   """
   def change_user_registration(%User{} = user, attrs \\ %{}) do
-    User.registration_changeset(user, attrs, hash_password: false, validate_email: false)
+    User.registration_changeset(user, attrs,
+      hash_password: false,
+      validate_email: false,
+      validate_username: false
+    )
   end
 
   ## Settings
@@ -353,5 +361,24 @@ defmodule Slax.Accounts do
 
   def list_users() do
     Repo.all(from u in User, order_by: [asc: u.email])
+  end
+
+  @pubsub Slax.PubSub
+
+  @user_avatar_topic "user-avatars"
+
+  def save_user_avatar_path(user, avatar_path) do
+    with {:ok, user} <-
+           user
+           |> User.avatar_changeset(%{avatar_path: avatar_path})
+           |> Repo.update() do
+      Phoenix.PubSub.broadcast!(@pubsub, @user_avatar_topic, {:updated_avatar, user})
+
+      {:ok, user}
+    end
+  end
+
+  def subscribe_to_user_avatars do
+    Phoenix.PubSub.subscribe(@pubsub, @user_avatar_topic)
   end
 end

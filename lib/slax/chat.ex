@@ -1,18 +1,98 @@
 defmodule Slax.Chat do
-  alias Expo.Message
-  alias Expo.Message
   alias Slax.Accounts.User
-  alias Slax.Chat.Room
-  alias Slax.Chat.{Message, Room, RoomMembership}
+  alias Slax.Chat.{Message, Reaction, Reply, Room, RoomMembership}
   alias Slax.Repo
-  alias Slax.Chat.RoomMembership
 
+  import Ecto.Changeset
   import Ecto.Query
 
   @pubsub Slax.PubSub
 
+  def get_first_room! do
+    Repo.one!(from r in Room, limit: 1, order_by: [asc: :name])
+  end
+
+  def get_room!(id) do
+    Repo.get!(Room, id)
+  end
+
+  def list_rooms do
+    Repo.all(from r in Room, order_by: [asc: :name])
+  end
+
+  def list_joined_rooms_with_unread_counts(%User{} = user) do
+    from(room in Room,
+      join: membership in assoc(room, :memberships),
+      where: membership.user_id == ^user.id,
+      left_join: message in assoc(room, :messages),
+      on: message.id > membership.last_read_id,
+      group_by: room.id,
+      select: {room, count(message.id)},
+      order_by: [asc: room.name]
+    )
+    |> Repo.all()
+  end
+
+  @room_page_size 10
+
+  def count_room_pages do
+    ceil(Repo.aggregate(Room, :count) / @room_page_size)
+  end
+
+  def list_rooms_with_joined(page, %User{} = user) do
+    offset = (page - 1) * @room_page_size
+
+    query =
+      from r in Room,
+        left_join: m in RoomMembership,
+        on: r.id == m.room_id and m.user_id == ^user.id,
+        select: {r, not is_nil(m.id)},
+        order_by: [asc: :name],
+        limit: ^@room_page_size,
+        offset: ^offset
+
+    Repo.all(query)
+  end
+
   def change_room(room, attrs \\ %{}) do
     Room.changeset(room, attrs)
+  end
+
+  def create_room(attrs) do
+    %Room{}
+    |> Room.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def update_room(%Room{} = room, attrs) do
+    room
+    |> Room.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def list_messages_in_room(%Room{id: room_id}, opts \\ []) do
+    Message
+    |> where([m], m.room_id == ^room_id)
+    |> order_by([m], desc: :inserted_at, desc: :id)
+    |> preload_message_user_and_replies()
+    |> preload_reactions()
+    |> Repo.paginate(
+      after: opts[:after],
+      limit: 50,
+      cursor_fields: [inserted_at: :desc, id: :desc]
+    )
+  end
+
+  defp preload_message_user_and_replies(message_query) do
+    replies_query = from r in Reply, order_by: [asc: :inserted_at, asc: :id]
+
+    preload(message_query, [:user, replies: ^{replies_query, [:user]}])
+  end
+
+  defp preload_reactions(message_query) do
+    reactions_query = from r in Reaction, order_by: [asc: :id]
+
+    preload(message_query, reactions: ^reactions_query)
   end
 
   def change_message(message, attrs \\ %{}) do
@@ -21,7 +101,7 @@ defmodule Slax.Chat do
 
   def create_message(room, attrs, user) do
     with {:ok, message} <-
-           %Message{room: room, user: user}
+           %Message{room: room, user: user, replies: [], reactions: []}
            |> Message.changeset(attrs)
            |> Repo.insert() do
       Phoenix.PubSub.broadcast!(@pubsub, topic(room.id), {:new_message, message})
@@ -37,57 +117,11 @@ defmodule Slax.Chat do
     Phoenix.PubSub.broadcast!(@pubsub, topic(message.room_id), {:message_deleted, message})
   end
 
-  def get_room!(id) do
-    Repo.get!(Room, id)
-  end
-
-  def list_rooms do
-    Repo.all(from Room, order_by: [asc: :name])
-  end
-
-  def list_joined_rooms(%User{} = user) do
-    user
-    |> Repo.preload(:rooms)
-    |> Map.fetch!(:rooms)
-    |> Enum.sort_by(& &1.name)
-  end
-
-  def list_rooms_with_joined(%User{} = user) do
-    query =
-      from r in Room,
-        left_join: m in RoomMembership,
-        on: r.id == m.room_id and m.user_id == ^user.id,
-        select: {r, not is_nil(m.id)},
-        order_by: [asc: :name]
-
-    Repo.all(query)
-  end
-
-  def list_messages_in_room(%Room{id: room_id}) do
-    Message
-    |> where([m], m.room_id == ^room_id)
-    |> order_by([m], asc: :inserted_at, asc: :id)
-    |> preload(:user)
-    |> Repo.all()
-  end
-
-  def create_room(attrs) do
-    %Room{}
-    |> Room.changeset(attrs)
-    |> Repo.insert()
-  end
-
-  def update_room(%Room{} = room, attrs) do
-    room
-    |> Room.changeset(attrs)
-    |> Repo.update()
-  end
-
   def subscribe_to_room(room) do
     Phoenix.PubSub.subscribe(@pubsub, topic(room.id))
   end
 
-  def unsubscribe_to_room(room) do
+  def unsubscribe_from_room(room) do
     Phoenix.PubSub.unsubscribe(@pubsub, topic(room.id))
   end
 
@@ -103,11 +137,8 @@ defmodule Slax.Chat do
     )
   end
 
-  @doc """
-  Toggles the room membership for a user.
-  """
   def toggle_room_membership(room, user) do
-    case Repo.get_by(RoomMembership, room_id: room.id, user_id: user.id) do
+    case get_membership(room, user) do
       %RoomMembership{} = membership ->
         Repo.delete(membership)
         {room, false}
@@ -115,6 +146,98 @@ defmodule Slax.Chat do
       nil ->
         join_room!(room, user)
         {room, true}
+    end
+  end
+
+  defp get_membership(room, user) do
+    Repo.get_by(RoomMembership, room_id: room.id, user_id: user.id)
+  end
+
+  def get_last_read_id(%Room{} = room, user) do
+    case get_membership(room, user) do
+      %RoomMembership{} = membership ->
+        membership.last_read_id
+
+      nil ->
+        nil
+    end
+  end
+
+  def update_last_read_id(room, user) do
+    case get_membership(room, user) do
+      %RoomMembership{} = membership ->
+        id =
+          from(m in Message, where: m.room_id == ^room.id, select: max(m.id))
+          |> Repo.one()
+
+        membership
+        |> change(%{last_read_id: id})
+        |> Repo.update()
+
+      nil ->
+        nil
+    end
+  end
+
+  def get_message!(id) do
+    Message
+    |> where([m], m.id == ^id)
+    |> preload_message_user_and_replies()
+    |> preload_reactions()
+    |> Repo.one!()
+  end
+
+  def delete_reply_by_id(id, %User{id: user_id}) do
+    with %Reply{} = reply <-
+           from(r in Reply, where: r.id == ^id and r.user_id == ^user_id)
+           |> Repo.one() do
+      Repo.delete(reply)
+
+      message = get_message!(reply.message_id)
+
+      Phoenix.PubSub.broadcast!(@pubsub, topic(message.room_id), {:deleted_reply, message})
+    end
+  end
+
+  def change_reply(reply, attrs \\ %{}) do
+    Reply.changeset(reply, attrs)
+  end
+
+  def create_reply(%Message{} = message, attrs, user) do
+    with {:ok, reply} <-
+           %Reply{message: message, user: user}
+           |> Reply.changeset(attrs)
+           |> Repo.insert() do
+      message = get_message!(reply.message_id)
+
+      Phoenix.PubSub.broadcast!(@pubsub, topic(message.room_id), {:new_reply, message})
+
+      {:ok, reply}
+    end
+  end
+
+  def add_reaction(emoji, %Message{} = message, %User{} = user) do
+    with {:ok, reaction} <-
+           %Reaction{message_id: message.id, user_id: user.id}
+           |> Reaction.changeset(%{emoji: emoji})
+           |> Repo.insert() do
+      Phoenix.PubSub.broadcast!(@pubsub, topic(message.room_id), {:added_reaction, reaction})
+
+      {:ok, reaction}
+    end
+  end
+
+  def remove_reaction(emoji, %Message{} = message, %User{} = user) do
+    with %Reaction{} = reaction <-
+           Repo.one(
+             from(r in Reaction,
+               where: r.message_id == ^message.id and r.user_id == ^user.id and r.emoji == ^emoji
+             )
+           ),
+         {:ok, reaction} <- Repo.delete(reaction) do
+      Phoenix.PubSub.broadcast!(@pubsub, topic(message.room_id), {:removed_reaction, reaction})
+
+      {:ok, reaction}
     end
   end
 end

@@ -15,21 +15,33 @@ alias Slax.Chat.Room
 alias Slax.Chat.Message
 alias Slax.Repo
 
-names = ["Aragorn", "Boromir", "Elrond", "Frodo", "Gimli", "Legolas"]
+names = [
+  "Aragorn",
+  "Boromir",
+  "Elrond",
+  "Frodo",
+  "Gimli",
+  "Legolas"
+]
 
 pw = "TheFellowship"
 
 for name <- names do
-  email =
-    (name
-     |> String.downcase()) <> "@fellowship.me"
+  username = name |> String.downcase()
+  email = username <> "@fellowship.me"
 
-  Accounts.register_user(%{email: email, password: pw, password_confirmation: pw})
+  Accounts.register_user(%{
+    email: email,
+    password: pw,
+    password_confirmation: pw,
+    username: username
+  })
 end
 
 elrond = Accounts.get_user_by_email("elrond@fellowship.me")
 aragorn = Accounts.get_user_by_email("aragorn@fellowship.me")
 boromir = Accounts.get_user_by_email("boromir@fellowship.me")
+
 room = Repo.insert!(%Room{name: "council-of-elrond", topic: "What to do with this ring?"})
 
 for {user, message} <- [

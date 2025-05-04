@@ -5,7 +5,7 @@ defmodule SlaxWeb.UserResetPasswordLive do
 
   def render(assigns) do
     ~H"""
-    <div class="mx-auto max-w-sm">
+    <div class="mx-auto w-96 mt-16">
       <.header class="text-center">Reset Password</.header>
 
       <.simple_form
@@ -17,6 +17,7 @@ defmodule SlaxWeb.UserResetPasswordLive do
         <.error :if={@form.errors != []}>
           Oops, something went wrong! Please check the errors below.
         </.error>
+
         <.input field={@form[:password]} type="password" label="New password" required />
         <.input
           field={@form[:password_confirmation]}
